@@ -43,7 +43,8 @@
       (if (:name res)
         (assoc slack-m :github
                (select-keys res [:name :email :location :blog :company
-                                 :url]))))))
+                                 :html_url :bio]))
+        slack-m))))
 
 (comment
 
@@ -51,13 +52,14 @@
 
   (->> user-list
        :members
-       (filter #(= (:name %) "favila"))
+       #_(filter #(= (:name %) "x"))
        #_(filter #(:title (:profile %)))
        (map (fn [u] (merge u (:profile u))))
        (map (fn [u] (select-keys u [:name :real_name :tz :title])))
        (map add-twitter)
        (map add-github)
-       (pprint)
+       (into [])
+       (spit "att-info.edn")
        )
 
 
