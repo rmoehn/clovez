@@ -39,7 +39,11 @@
 (defn add-github [slack-m]
   (if (seq (:github slack-m))
     slack-m
-    (let [res (tentacles.users/user (:name slack-m))]
+    (let [res (tentacles.users/user
+                (:name slack-m)
+                {:auth (str (System/getenv "CLOVEZ_GITHUB_USER")
+                            \:
+                            (System/getenv "CLOVEZ_GITHUB_TOKEN"))})]
       (if (:name res)
         (assoc slack-m :github
                (select-keys res [:name :email :location :blog :company
@@ -62,6 +66,8 @@
        (spit "att-info.edn")
        )
 
+  (pprint (clojure.edn/read-string (slurp "att-info.edn")))
+
 
   (pprint (twitter-urls (twitter/users-show :oauth-creds twitter-creds :params {:screen-name "favila"})))
 
@@ -71,6 +77,10 @@
 
   (http/get "https://api.github.com/users/rmoehn")
 
-  (pprint (tentacles.users/user "rmoehn"))
+  (pprint (tentacles.users/user
+            "rmoehn"
+            {:auth (str (System/getenv "CLOVEZ_GITHUB_USER")
+                        \:
+                        (System/getenv "CLOVEZ_GITHUB_TOKEN"))}))
 
   )
