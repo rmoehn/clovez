@@ -6,6 +6,7 @@
             [clj-http.client :as http]
             [clj-slack.users]
             [com.rpl.specter :as s]
+            [tentacles.users]
             [twitter.oauth]
             [twitter.api.restful :as twitter]
             ))
@@ -20,15 +21,29 @@
                       (System/getenv "CLOVEZ_TWITTER_ACCESS_TOKEN")
                       (System/getenv "CLOVEZ_TWITTER_ACCESS_TOKEN_SECRET")))
 
-(defn add-twitter [slack-u]
-  (if (:twitter slack-u)
-    slack-u
+(defn twitter-urls [twitter-m]
+  (s/select [:body :entities :url :urls s/ALL :expanded_url] twitter-m))
+
+(defn add-twitter [slack-m]
+  (if (seq (:twitter slack-m))
+    slack-m
     (let [full (try (twitter/users-show :oauth-creds twitter-creds
-                                        :params {:screen-name (:name slack-u)})
+                                        :params {:screen-name (:name slack-m)})
                     (catch Exception e nil))]
-      (assoc slack-u :twitter
-             (select-keys (:body full) [:screen_name :name :location :description
-                                :url])))))
+      (-> slack-m
+          (assoc :twitter
+                 (select-keys (:body full) [:screen_name :name :location
+                                            :description]))
+          (assoc-in [:twitter :urls] (twitter-urls full))))))
+
+(defn add-github [slack-m]
+  (if (seq (:github slack-m))
+    slack-m
+    (let [res (tentacles.users/user (:name slack-m))]
+      (if (:name res)
+        (assoc slack-m :github
+               (select-keys res [:name :email :location :blog :company
+                                 :url]))))))
 
 (comment
 
@@ -36,21 +51,24 @@
 
   (->> user-list
        :members
-       #_(filter #(= (:name %) "AdamJWynne"))
-       (filter #(:title (:profile %)))
+       (filter #(= (:name %) "favila"))
+       #_(filter #(:title (:profile %)))
        (map (fn [u] (merge u (:profile u))))
        (map (fn [u] (select-keys u [:name :real_name :tz :title])))
        (map add-twitter)
+       (map add-github)
        (pprint)
        )
 
 
-  (pprint (twitter/users-show :oauth-creds twitter-creds :params {:screen-name "delaybeforesend"}))
+  (pprint (twitter-urls (twitter/users-show :oauth-creds twitter-creds :params {:screen-name "favila"})))
 
   (http/get "https://api.twitter.com/1.1/users/show.json"
             {:query-params {:name "delaybeforesend"}}
             )
 
   (http/get "https://api.github.com/users/rmoehn")
+
+  (pprint (tentacles.users/user "rmoehn"))
 
   )
